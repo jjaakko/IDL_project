@@ -33,6 +33,7 @@ TRAIN_BATCH_SIZE = 16
 VALID_BATCH_SIZE = 8
 EPOCHS = 10
 LEARNING_RATE = 1e-05
+DEBUG_RUN = True
 
 def log(msg):
     """Helper function to write stuff both to std output and a separate file.
@@ -156,9 +157,16 @@ class CustomDataset(Dataset):
         }
 
 # Creating the dataset and dataloader for the neural network
-size_train = train_df.shape[0]
-size_valid = 3000 # valid_df.shape[0]
-size_test = test_df.shape[0]
+if DEBUG_RUN:
+    size_train = 2000
+    size_valid = 1000
+    size_test = 1000
+else:
+    # Use all the data (except smaller set for validation to speed up training)
+    size_train = train_df.shape[0]
+    size_valid = 3000 # valid_df.shape[0]
+    size_test = test_df.shape[0]
+
 train_dataset = train_df[0:size_train].reset_index(drop=True)
 valid_dataset = valid_df[0:size_valid].reset_index(drop=True)
 test_dataset = test_df[0:size_test].reset_index(drop=True)
