@@ -145,8 +145,9 @@ cython_debug/
 #
 .vscode
 
-# Exclude csv values
+# Exclude data files
 *.csv
+*.tar.gz
 
 # Exclude model files
 *.pth

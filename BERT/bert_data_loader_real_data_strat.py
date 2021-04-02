@@ -48,15 +48,15 @@ def time_str(msg, end, start):
     time_str = f"{msg}: {delta:.2f} seconds ({delta/3600:.2f} hours)"
     return time_str
 
-d = Path(__file__).parent.parent
-root = Path(d)
+root = Path(__file__).absolute().parents[1]
+print(root)
 
 train_file = root / "data" / "train.csv"
 valid_file = root / "data" / "valid.csv"
 test_file = root / "data" / "test.csv"
 output_file = root / "log.txt"
 
-code_counts_file = Path(".") / "data" / "codecounts.csv"
+code_counts_file = root / "data" / "codecounts.csv"
 
 if output_file.exists():
     output_file.unlink()
