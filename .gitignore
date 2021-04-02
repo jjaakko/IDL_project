@@ -142,12 +142,16 @@ cython_debug/
 **run-*
 **run.txt
 
-#
+# Ignore vscode settings.
 .vscode
 
-# Exclude data files
+# Ignore data files
 *.csv
 *.tar.gz
+*.pickle
 
-# Exclude model files
+# Ignore model files
 *.pth
+
+# Ignore log file for puhti
+**log.txt

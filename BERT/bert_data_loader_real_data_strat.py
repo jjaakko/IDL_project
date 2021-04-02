@@ -13,6 +13,7 @@ Original file is located at
 from ast import literal_eval
 from pathlib import Path
 import time
+import pickle
 import pandas as pd
 import numpy as np
 from sklearn import metrics
@@ -50,42 +51,57 @@ def time_str(msg, end, start):
     return time_str
 
 root = Path(__file__).absolute().parents[1]
-print(root)
 
-train_file = root / "data" / "train.csv"
-valid_file = root / "data" / "valid.csv"
-test_file = root / "data" / "test.csv"
 output_file = root / "log.txt"
-
-code_counts_file = root / "data" / "codecounts.csv"
-
 if output_file.exists():
     output_file.unlink()
 
 file = open(output_file, "w")
 
-log("Starting...")
-
-valid_df = pd.read_csv(valid_file)
-train_df = pd.read_csv(train_file)
-test_df = pd.read_csv(test_file)
-
+code_counts_file = root / "data" / "codecounts.csv"
 df_codes = pd.read_csv(code_counts_file)
 pos_weights=torch.tensor(df_codes["weights"].values, device=device)
 
-# Turn string representations of lists into actual lists.
-train_df["codes"] = train_df["codes"].apply(lambda x: literal_eval(x))
-valid_df["codes"] = valid_df["codes"].apply(lambda x: literal_eval(x))
-test_df["codes"] = test_df["codes"].apply(lambda x: literal_eval(x))
+if not (Path(root) / "data" / "train.pickle").exists():
+    log("Reading data from csv files and creating pickle files...")
+    train_file = root / "data" / "train.csv"
+    valid_file = root / "data" / "valid.csv"
+    test_file = root / "data" / "test.csv"
 
-train_df["labels"] = train_df["labels"].apply(lambda x: literal_eval(x))
-valid_df["labels"] = valid_df["labels"].apply(lambda x: literal_eval(x))
-test_df["labels"] = test_df["labels"].apply(lambda x: literal_eval(x))
+    valid_df = pd.read_csv(valid_file)
+    train_df = pd.read_csv(train_file)
+    test_df = pd.read_csv(test_file)
 
-train_df["sentences"] = train_df["sentences"].apply(lambda x: literal_eval(x))
-valid_df["sentences"] = valid_df["sentences"].apply(lambda x: literal_eval(x))
-test_df["sentences"] = test_df["sentences"].apply(lambda x: literal_eval(x))
+    # Turn string representations of lists into actual lists.
+    train_df["codes"] = train_df["codes"].apply(lambda x: literal_eval(x))
+    valid_df["codes"] = valid_df["codes"].apply(lambda x: literal_eval(x))
+    test_df["codes"] = test_df["codes"].apply(lambda x: literal_eval(x))
 
+    train_df["labels"] = train_df["labels"].apply(lambda x: literal_eval(x))
+    valid_df["labels"] = valid_df["labels"].apply(lambda x: literal_eval(x))
+    test_df["labels"] = test_df["labels"].apply(lambda x: literal_eval(x))
+
+    train_df["sentences"] = train_df["sentences"].apply(lambda x: literal_eval(x))
+    valid_df["sentences"] = valid_df["sentences"].apply(lambda x: literal_eval(x))
+    test_df["sentences"] = test_df["sentences"].apply(lambda x: literal_eval(x))
+
+    with open(Path(root) / "data" / "train.pickle", 'wb') as handle:
+        pickle.dump(train_df, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    with open(Path(root) / "data" / "valid.pickle", 'wb') as handle:
+        pickle.dump(train_df, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    with open(Path(root) / "data" / "test.pickle", 'wb') as handle:
+        pickle.dump(train_df, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    print("Saved data to pickle files.")
+
+else:
+    print("Loading data from pickle files...")
+    with open(Path(root) / "data" / "train.pickle", 'rb') as handle:
+        train_df = pickle.load(handle)
+    with open(Path(root) / "data" / "valid.pickle", 'rb') as handle:
+        valid_df = pickle.load(handle)
+    with open(Path(root) / "data" / "test.pickle", 'rb') as handle:
+        test_df = pickle.load(handle)
+    print("Data loaded.")
 
 def trim_string(x, **kwargs):
 
@@ -223,19 +239,39 @@ def loss_fn(outputs, targets):
 optimizer = torch.optim.Adam(params =  model.parameters(), lr=LEARNING_RATE)
 
 def validation(dataset_loader):
-    model.eval()
-    fin_targets=[]
-    fin_outputs=[]
+    model.eval()  
+
+    fin_targets = np.empty((0,103), int)
+    fin_outputs = np.empty((0,103), int)
+
     with torch.no_grad():
-        for _, data in enumerate(dataset_loader, 0):
+        for data in dataset_loader:
             ids = data['ids'].to(device, dtype = torch.long)
             mask = data['mask'].to(device, dtype = torch.long)
             token_type_ids = data['token_type_ids'].to(device, dtype = torch.long)
-            targets = data['targets'].to(device, dtype = torch.float)
-            outputs = model(ids, mask, token_type_ids)
-            fin_targets.extend(targets.cpu().detach().numpy().tolist())
-            fin_outputs.extend(torch.sigmoid(outputs).cpu().detach().numpy().tolist())
-    return fin_outputs, fin_targets
+            outputs = torch.sigmoid(model(ids, mask, token_type_ids)).cpu().detach().numpy()
+            targets = data["targets"].cpu().detach().numpy()
+
+            fin_outputs = np.append(fin_outputs, outputs, axis=0)
+            fin_targets = np.append(fin_targets, targets, axis=0)
+        
+        outputs = fin_outputs > 0.5
+
+        stats = {}
+        stats['acc'] = metrics.accuracy_score(fin_targets, outputs)
+        stats['hamming'] = metrics.hamming_loss(fin_targets, outputs)
+        stats['f1_micro'] = metrics.f1_score(fin_targets, outputs, average='micro', zero_division=0)
+        stats['prec'], stats['rec'], stats['f1_macro'], _ = metrics.precision_recall_fscore_support(fin_targets, outputs, average='macro', zero_division=0)
+        
+        return stats
+
+def print_results(stats):
+    print(f"Accuracy Score = {stats['acc']}")
+    print(f"Hamming loss = {stats['hamming']}")
+    print(f"F1 Score (Micro) = {stats['f1_micro']}")
+    print(f"F1 Score (Macro) = {stats['f1_macro']}")
+    print(f"Precision (Macro) = {stats['prec']}")
+    print(f"Recall (Macro) = {stats['rec']}")   
 
 best_f1_score = 0
 
@@ -255,27 +291,22 @@ def train(epoch):
 
         optimizer.zero_grad()
         loss = loss_fn(outputs, targets)
-        if i%calculate_dev_acc_every==0:
-            log(f'Epoch: {epoch}, Loss:  {loss.item()}')
+        if i == calculate_dev_acc_every:
+            log(f'\n--- Training loss:  {loss.item()} (Epoch: {epoch}, batch num: {i}): ---')
 
             valid_start_time = time.time()
             with torch.no_grad():
                 model.eval()
-                output_probs, targets = validation(valid_loader)
-                outputs = np.array(output_probs) >= 0.5
-                #set_trace()
-                targets = np.array(targets)
-                f1_score_micro = metrics.f1_score(targets, outputs, average='micro', zero_division=0)
-                f1_score_macro = metrics.f1_score(targets, outputs, average='macro', zero_division=0)
-                log(f"Validation set: F1 Score (Micro) = {f1_score_micro}, F1 Score (Macro) = {f1_score_macro}")
-                if f1_score_macro > best_f1_score: 
-                  best_f1_score = f1_score_macro
-                  # Save the best model so far.
-                  torch.save(model.state_dict(), "bert.pth")
+                results = validation(valid_loader)
+                print(f"\n--- Results for the validation set (Epoch: {epoch}, batch num: {i}): ---")
+                print_results(results)
+                if results['f1_macro'] > best_f1_score: 
+                        best_f1_score = results['f1_macro']
+                        # Save the best model so far.
+                        torch.save(model.state_dict(), "bert.pth")
             model.train()
             valid_end_time = time.time()
             log(time_str("Validation with dev set took", valid_end_time, valid_start_time))
-
 
         optimizer.zero_grad()
         loss.backward()
@@ -287,24 +318,19 @@ log("Training starts")
 training_start_time = time.time()
 for epoch in range(EPOCHS):
     train(epoch)
+    results = validation(valid_loader)
+    print(f"\n--- Results for the validation set (Epoch: {epoch}): ---")
+    print_results(results)
+    if results['f1_macro'] > best_f1_score: 
+        best_f1_score = results['f1_macro']
+        # Save the best model so far.
+        torch.save(model.state_dict(), "bert.pth") 
 training_end_time = time.time()
 log(time_str("Training ended. Training took", training_end_time, training_start_time))
 
 log(f"Using model with a macro f1 score of {best_f1_score} for the dev set.")
 model.load_state_dict(torch.load("bert.pth"))
 log("Evaluating model with the test set.")
-for epoch in range(EPOCHS):
-    output_probs, targets = validation(testing_loader)
-    # Should we tinker with threshold?
-    outputs = np.array(output_probs) >= 0.5
-    accuracy = metrics.accuracy_score(targets, outputs)
-    hamming_loss = metrics.hamming_loss(targets, outputs)
-    targets = np.array(targets)
-    f1_score_micro = metrics.f1_score(targets, outputs, average='micro', zero_division=0)
-    f1_score_macro = metrics.f1_score(targets, outputs, average='macro', zero_division=0)
-    log(f"Accuracy Score = {accuracy}")
-    log(f"Hamming loss = {hamming_loss}")
-    log(f"F1 Score (Micro) = {f1_score_micro}")
-    log(f"F1 Score (Macro) = {f1_score_macro}")
-
+test_results = validation(testing_loader)
+print_results(test_results)
 file.close()
