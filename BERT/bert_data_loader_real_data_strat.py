@@ -37,15 +37,34 @@ from transformers import BertTokenizer, BertForSequenceClassification
 from transformers import BertTokenizer, BertModel, BertConfig
 
 from pathlib import Path
+import time
 
+def log(msg):
+    print(msg)
+    file.write(f"{msg}\n")
+
+def time_str(msg, end, start):
+    delta = end-start 
+    time_str = f"{msg}: {delta:.2f} seconds ({delta/3600:.2f} hours)"
+    return time_str
+
+d = Path(__file__).parent
 d = Path.cwd()
 root = Path(d)
 
-train_file = Path(".") / "data" / "train.csv"
-valid_file = Path(".") / "data" / "valid.csv"
-test_file = Path(".") / "data" / "test.csv"
+train_file = root / "data" / "train.csv"
+valid_file = root / "data" / "valid.csv"
+test_file = root / "data" / "test.csv"
+output_file = root / "log.txt"
 
 code_counts_file = Path(".") / "data" / "codecounts.csv"
+
+if output_file.exists():
+    output_file.unlink()
+
+file = open(output_file, "w")
+
+log("Starting...")
 
 # if not train_file.exists():
 #   print("Downloading and preparing datafiles.")
@@ -70,8 +89,19 @@ code_counts_file = Path(".") / "data" / "codecounts.csv"
 # else:
 #   print("Datafiles already exists.")
 
+def to_list(x):
+    return x.strip("[]").replace("'","").split(", ")
+
+valid_df = pd.read_csv(
+    valid_file
+    # usecols=["sentences","codes","labels"],
+    # converters={
+    #     "codes": to_list,
+    #     "sentences": to_list,
+    #     "labels": to_list,
+    # }
+)
 train_df = pd.read_csv(train_file)
-valid_df = pd.read_csv(valid_file)
 test_df = pd.read_csv(test_file)
 
 df_codes = pd.read_csv(code_counts_file)
@@ -163,9 +193,9 @@ from more_itertools import locate
 
 # Defining some key variables that will be used later on in the training
 MAX_LEN = max_tokens
-TRAIN_BATCH_SIZE = 8
-VALID_BATCH_SIZE = 4
-EPOCHS = 5
+TRAIN_BATCH_SIZE = 16
+VALID_BATCH_SIZE = 8
+EPOCHS = 10
 LEARNING_RATE = 1e-05
 tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
 
@@ -218,23 +248,25 @@ class CustomDataset(Dataset):
 #df_train, df_testvalid = train_test_split(df_essentials, train_size=0.8, random_state=42)
 #df_test, df_valid = train_test_split(df_testvalid, train_size=0.5, random_state=42)
 
-size_train=train_df.shape[0]
-size_valid=300 #valid_df.shape[0]
-size_test=test_df.shape[0]
+size_train = train_df.shape[0]
+size_valid = 3000 # valid_df.shape[0]
+size_test = test_df.shape[0]
 train_dataset = train_df[0:size_train].reset_index(drop=True)
 valid_dataset = valid_df[0:size_valid].reset_index(drop=True)
 test_dataset = test_df[0:size_test].reset_index(drop=True)
 
 
 #print("FULL Dataset: {}".format(df_essentials.shape))
-print("TRAIN Dataset: {}".format(train_dataset.shape))
-print("VALID Dataset: {}".format(valid_dataset.shape))
-print("TEST Dataset: {}".format(test_dataset.shape))
+log("TRAIN Dataset: {}".format(train_dataset.shape))
+log("VALID Dataset: {}".format(valid_dataset.shape))
+log("TEST Dataset: {}".format(test_dataset.shape))
 
 training_set = CustomDataset(train_dataset, tokenizer, MAX_LEN)
 valid_set = CustomDataset(valid_dataset, tokenizer, MAX_LEN)
 testing_set = CustomDataset(test_dataset, tokenizer, MAX_LEN)
 
+calculate_dev_acc_every = (size_train//2)//TRAIN_BATCH_SIZE
+calculate_dev_acc_every
 
 train_params = {'batch_size': TRAIN_BATCH_SIZE,
                 'shuffle': True,
@@ -297,7 +329,8 @@ def train(epoch):
     global best_f1_score
     best_f1_score = 0
     model.train()
-    for i,data in enumerate(training_loader, 0):
+    epoch_start_time = time.time()
+    for i,data in enumerate(training_loader):
         ids = data['ids'].to(device, dtype = torch.long)
         mask = data['mask'].to(device, dtype = torch.long)
         token_type_ids = data['token_type_ids'].to(device, dtype = torch.long)
@@ -308,9 +341,10 @@ def train(epoch):
 
         optimizer.zero_grad()
         loss = loss_fn(outputs, targets)
-        if i%40==0:
-            print(f'Epoch: {epoch}, Loss:  {loss.item()}')
+        if i%calculate_dev_acc_every==0:
+            log(f'Epoch: {epoch}, Loss:  {loss.item()}')
 
+            valid_start_time = time.time()
             with torch.no_grad():
                 model.eval()
                 output_probs, targets = validation(valid_loader)
@@ -319,23 +353,32 @@ def train(epoch):
                 targets = np.array(targets)
                 f1_score_micro = metrics.f1_score(targets, outputs, average='micro', zero_division=0)
                 f1_score_macro = metrics.f1_score(targets, outputs, average='macro', zero_division=0)
-                print(f"Validation set: F1 Score (Micro) = {f1_score_micro}, F1 Score (Macro) = {f1_score_macro}\n")
+                log(f"Validation set: F1 Score (Micro) = {f1_score_micro}, F1 Score (Macro) = {f1_score_macro}")
                 if f1_score_macro > best_f1_score: 
                   best_f1_score = f1_score_macro
                   # Save the best model so far.
                   torch.save(model.state_dict(), "bert.pth")
             model.train()
-        
+            valid_end_time = time.time()
+            log(time_str("Validation with dev set took", valid_end_time, valid_start_time))
+
+
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
+    epoch_end_time = time.time()
+    log(time_str("Training for this epoch took", epoch_end_time, epoch_start_time))
 
+log("Training starts")
+training_start_time = time.time()
 for epoch in range(EPOCHS):
     train(epoch)
+training_end_time = time.time()
+log(time_str("Training ended. Training took", training_end_time, training_start_time))
 
-print(f"Using model with a macro f1 score of {best_f1_score} for the dev set.")
+log(f"Using model with a macro f1 score of {best_f1_score} for the dev set.")
 model.load_state_dict(torch.load("bert.pth"))
-print("Evaluating model with the test set.")
+log("Evaluating model with the test set.")
 for epoch in range(EPOCHS):
     output_probs, targets = validation(testing_loader)
     # Should we tinker with threshold?
@@ -345,10 +388,10 @@ for epoch in range(EPOCHS):
     targets = np.array(targets)
     f1_score_micro = metrics.f1_score(targets, outputs, average='micro', zero_division=0)
     f1_score_macro = metrics.f1_score(targets, outputs, average='macro', zero_division=0)
-    print(f"Accuracy Score = {accuracy}")
-    print(f"Hamming loss = {hamming_loss}")
-    print(f"F1 Score (Micro) = {f1_score_micro}")
-    print(f"F1 Score (Macro) = {f1_score_macro}")
+    log(f"Accuracy Score = {accuracy}")
+    log(f"Hamming loss = {hamming_loss}")
+    log(f"F1 Score (Micro) = {f1_score_micro}")
+    log(f"F1 Score (Macro) = {f1_score_macro}")
 
 # Prediction probabilities for the first item in test set.
 out_probs = np.array(output_probs)
@@ -367,4 +410,7 @@ indexes_1 = np.where(ta[0,:]>0)
 
 # Probabilities for the corresponding indexes.
 for i in indexes_1[0]:
-  print(out_probs[0,i])
+  log(out_probs[0,i])
+
+
+file.close()
