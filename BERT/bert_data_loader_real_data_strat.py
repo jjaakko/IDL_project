@@ -65,13 +65,7 @@ file = open(output_file, "w")
 
 log("Starting...")
 
-
-def to_list(x):
-    return x.strip("[]").replace("'","").split(", ")
-
-valid_df = pd.read_csv(
-    valid_file
-)
+valid_df = pd.read_csv(valid_file)
 train_df = pd.read_csv(train_file)
 test_df = pd.read_csv(test_file)
 
@@ -121,42 +115,6 @@ test_df["title_text"] = test_df["sentences"].apply(join_sents, first_n_words=MAX
 
 target_size = len(df_codes)
 
-# Create a dictionary code_to_index such that
-# {
-#    'C11': 0,
-#    'C12': 1,
-#    'C13': 2,
-#    ...
-# }
-index_to_code = pd.DataFrame(df_codes["code"]).to_dict(orient="dict")["code"]
-code_to_index = {code: index for index, code in index_to_code.items()}
-
-
-code_df = pd.DataFrame(list(code_to_index))
-
-num_labels = len(code_to_index)
-
-
-# Verify label vectors are correct
-
-from more_itertools import locate
-
-# # Get indexes that correspond to labels existing for row z
-# z = 10
-# has1 = list(locate(train_df["labels"][z], lambda x: x == 1))
-
-# # Display codes that correspond to the indexes, derived from the label vectors
-# code_df.iloc[has1]
-
-# train_df
-
-# # Display codes from the original data
-# train_df.iloc[10]["title_text"]
-
-# Sections of config
-
-# Defining some key variables that will be used later on in the training
-
 tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
 
 class CustomDataset(Dataset):
@@ -198,16 +156,6 @@ class CustomDataset(Dataset):
         }
 
 # Creating the dataset and dataloader for the neural network
-
-#train_size = 0.8
-#train_dataset=new_df.sample(frac=train_size,random_state=200)
-#test_dataset=new_df.drop(train_dataset.index).reset_index(drop=True)
-#train_dataset = train_dataset.reset_index(drop=True)
-
-# Split to train, valid and test sets.
-#df_train, df_testvalid = train_test_split(df_essentials, train_size=0.8, random_state=42)
-#df_test, df_valid = train_test_split(df_testvalid, train_size=0.5, random_state=42)
-
 size_train = train_df.shape[0]
 size_valid = 3000 # valid_df.shape[0]
 size_test = test_df.shape[0]
@@ -215,8 +163,6 @@ train_dataset = train_df[0:size_train].reset_index(drop=True)
 valid_dataset = valid_df[0:size_valid].reset_index(drop=True)
 test_dataset = test_df[0:size_test].reset_index(drop=True)
 
-
-#print("FULL Dataset: {}".format(df_essentials.shape))
 log("TRAIN Dataset: {}".format(train_dataset.shape))
 log("VALID Dataset: {}".format(valid_dataset.shape))
 log("TEST Dataset: {}".format(test_dataset.shape))
@@ -352,25 +298,5 @@ for epoch in range(EPOCHS):
     log(f"Hamming loss = {hamming_loss}")
     log(f"F1 Score (Micro) = {f1_score_micro}")
     log(f"F1 Score (Macro) = {f1_score_macro}")
-
-# Prediction probabilities for the first item in test set.
-out_probs = np.array(output_probs)
-out_probs[6,:]
-
-# Classification for the first item in the testset.
-outputs[6,:]
-
-ta = np.array(targets)
-
-# Gold labels.
-ta[6,:]
-
-# Indexes for tags that correspond to tags that are present in the news.
-indexes_1 = np.where(ta[0,:]>0)
-
-# Probabilities for the corresponding indexes.
-for i in indexes_1[0]:
-  log(out_probs[0,i])
-
 
 file.close()
