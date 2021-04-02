@@ -11,45 +11,44 @@ Original file is located at
 # https://github.com/abhimishra91/transformers-tutorials
 
 from ast import literal_eval
-import matplotlib.pyplot as plt
+from pathlib import Path
+import time
 import pandas as pd
-import torch
 import numpy as np
-
-from torch.utils.data import Dataset, DataLoader, RandomSampler, SequentialSampler
-
-import torch.nn as nn
-import torch.optim as optim
-
-from IPython.core.debugger import set_trace
 from sklearn import metrics
-import seaborn as sns
 
-import pandas as pd
-from sklearn.model_selection import train_test_split
-
+import torch
 from torch import cuda
-device = 'cuda' if cuda.is_available() else 'cpu'
+from torch.utils.data import Dataset, DataLoader
 
 # Note: needs transformers 3
 import transformers
-from transformers import BertTokenizer, BertForSequenceClassification
-from transformers import BertTokenizer, BertModel, BertConfig
+from transformers import BertTokenizer
+from transformers import BertTokenizer
 
-from pathlib import Path
-import time
+device = 'cuda' if cuda.is_available() else 'cpu'
+
+MAX_LEN = 512
+TRAIN_BATCH_SIZE = 16
+VALID_BATCH_SIZE = 8
+EPOCHS = 10
+LEARNING_RATE = 1e-05
 
 def log(msg):
+    """Helper function to write stuff both to std output and a separate file.
+    """
     print(msg)
     file.write(f"{msg}\n")
 
 def time_str(msg, end, start):
+    """Helper function for creating time delta strings for logging execition
+    etc. times.
+    """
     delta = end-start 
     time_str = f"{msg}: {delta:.2f} seconds ({delta/3600:.2f} hours)"
     return time_str
 
-d = Path(__file__).parent
-d = Path.cwd()
+d = Path(__file__).parent.parent
 root = Path(d)
 
 train_file = root / "data" / "train.csv"
@@ -66,40 +65,12 @@ file = open(output_file, "w")
 
 log("Starting...")
 
-# if not train_file.exists():
-#   print("Downloading and preparing datafiles.")
-#   !mkdir data
-#   !wget https://www.dropbox.com/s/4o4m24eybl2jq9c/train.csv.tar.gz?dl=0
-#   !wget https://www.dropbox.com/s/en8k3df7a6l1qat/codecounts.csv?dl=0
-#   !mv train.csv.tar.gz?dl=0 train.csv.tar.gz
-#   !tar -zxvf train.csv.tar.gz
-#   !mv train.csv data/.
-#   !mv codecounts.csv?dl=0 data/codecounts.csv
-
-#   !wget https://www.dropbox.com/s/nnfyk0gb3s3w22k/test.csv.tar.gz?dl=0
-#   !mv test.csv.tar.gz?dl=0 test.csv.tar.gz
-#   !tar -zxvf test.csv.tar.gz
-#   !mv test.csv data/.
-
-#   !wget https://www.dropbox.com/s/ylpjz7zvra8bdru/valid.csv.tar.gz?dl=0
-#   !mv valid.csv.tar.gz?dl=0 valid.csv.tar.gz
-#   !tar -zxvf valid.csv.tar.gz
-#   !mv valid.csv data/.
-
-# else:
-#   print("Datafiles already exists.")
 
 def to_list(x):
     return x.strip("[]").replace("'","").split(", ")
 
 valid_df = pd.read_csv(
     valid_file
-    # usecols=["sentences","codes","labels"],
-    # converters={
-    #     "codes": to_list,
-    #     "sentences": to_list,
-    #     "labels": to_list,
-    # }
 )
 train_df = pd.read_csv(train_file)
 test_df = pd.read_csv(test_file)
@@ -107,6 +78,7 @@ test_df = pd.read_csv(test_file)
 df_codes = pd.read_csv(code_counts_file)
 pos_weights=torch.tensor(df_codes["weights"].values, device=device)
 
+# Turn string representations of lists into actual lists.
 train_df["codes"] = train_df["codes"].apply(lambda x: literal_eval(x))
 valid_df["codes"] = valid_df["codes"].apply(lambda x: literal_eval(x))
 test_df["codes"] = test_df["codes"].apply(lambda x: literal_eval(x))
@@ -134,26 +106,18 @@ def trim_string(x, **kwargs):
     return x
 
 def join_sents(sents, first_n_words):
-  concatenated_and_trimmed = ""
   try:
     concatenated = " ".join(sents)
-    #set_trace()
   except TypeError as e:
     concatenated = " ".join(sents[1:first_n_words+1])
   trimmed = trim_string(concatenated, first_n_words=first_n_words)
 
   return trimmed
 
+train_df["title_text"] = train_df["sentences"].apply(join_sents, first_n_words=MAX_LEN)
+valid_df["title_text"] = valid_df["sentences"].apply(join_sents, first_n_words=MAX_LEN)
+test_df["title_text"] = test_df["sentences"].apply(join_sents, first_n_words=MAX_LEN)
 
-# Max token num
-max_tokens = 512
-
-train_df["title_text"] = train_df["sentences"].apply(join_sents, first_n_words=max_tokens)
-valid_df["title_text"] = valid_df["sentences"].apply(join_sents, first_n_words=max_tokens)
-test_df["title_text"] = test_df["sentences"].apply(join_sents, first_n_words=max_tokens)
-
-#valid_df["len"] = valid_df["title_text"].apply(lambda x: len(x.split()))
-#valid_df[valid_df["len"]>512]
 
 target_size = len(df_codes)
 
@@ -192,11 +156,7 @@ from more_itertools import locate
 # Sections of config
 
 # Defining some key variables that will be used later on in the training
-MAX_LEN = max_tokens
-TRAIN_BATCH_SIZE = 16
-VALID_BATCH_SIZE = 8
-EPOCHS = 10
-LEARNING_RATE = 1e-05
+
 tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
 
 class CustomDataset(Dataset):
