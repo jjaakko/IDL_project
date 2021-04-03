@@ -32,9 +32,9 @@ device = 'cuda' if cuda.is_available() else 'cpu'
 MAX_LEN = 512
 TRAIN_BATCH_SIZE = 16
 VALID_BATCH_SIZE = 8
-EPOCHS = 10
+EPOCHS = 8
 LEARNING_RATE = 1e-05
-DEBUG_RUN = True
+DEBUG_RUN = False
 
 def log(msg):
     """Helper function to write stuff both to std output and a separate file.
@@ -88,9 +88,9 @@ if not (Path(root) / "data" / "train.pickle").exists():
     with open(Path(root) / "data" / "train.pickle", 'wb') as handle:
         pickle.dump(train_df, handle, protocol=pickle.HIGHEST_PROTOCOL)
     with open(Path(root) / "data" / "valid.pickle", 'wb') as handle:
-        pickle.dump(train_df, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        pickle.dump(valid_df, handle, protocol=pickle.HIGHEST_PROTOCOL)
     with open(Path(root) / "data" / "test.pickle", 'wb') as handle:
-        pickle.dump(train_df, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        pickle.dump(test_df, handle, protocol=pickle.HIGHEST_PROTOCOL)
     print("Saved data to pickle files.")
 
 else:
@@ -180,12 +180,18 @@ if DEBUG_RUN:
 else:
     # Use all the data (except smaller set for validation to speed up training)
     size_train = train_df.shape[0]
-    size_valid = 3000 # valid_df.shape[0]
+    size_valid = 10000 # valid_df.shape[0]
     size_test = test_df.shape[0]
 
 train_dataset = train_df[0:size_train].reset_index(drop=True)
 valid_dataset = valid_df[0:size_valid].reset_index(drop=True)
 test_dataset = test_df[0:size_test].reset_index(drop=True)
+
+#unused_valid = valid_df[size_valid:valid_df.shape[0]].reset_index(drop=True)
+#train_dataset = train_dataset.append(unused_valid).reset_index(drop=True)
+print(train_dataset)
+print(test_dataset)
+# print(unused_valid)
 
 log("TRAIN Dataset: {}".format(train_dataset.shape))
 log("VALID Dataset: {}".format(valid_dataset.shape))
