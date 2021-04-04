@@ -155,3 +155,7 @@ cython_debug/
 
 # Ignore log file for puhti
 **log.txt
+
+# Ignore slurm script result files
+**.out.*
+**.err.*
