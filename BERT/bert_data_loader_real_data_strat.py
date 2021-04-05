@@ -17,6 +17,7 @@ import pickle
 import pandas as pd
 import numpy as np
 from sklearn import metrics
+import arrow
 
 import torch
 from torch import cuda
@@ -35,12 +36,17 @@ VALID_BATCH_SIZE = 8
 EPOCHS = 10
 LEARNING_RATE = 1e-05
 DEBUG_RUN = False
+USE_POS_WEIGHTS = True
+
+model_filename = f"bert__{arrow.now().format('MMM-Do-YYYY-HH_mm_ss')}.pth"
 
 print(f"MAX_LEN: {MAX_LEN}")
 print(f"TRAIN_BATCH_SIZE: {TRAIN_BATCH_SIZE}")
 print(f"VALID_BATCH_SIZE: {VALID_BATCH_SIZE}")
 print(f"EPOCHS: {EPOCHS}")
-print(f"LEARNING_RATE: {LEARNING_RATE:.6f}\n")
+print(f"LEARNING_RATE: {LEARNING_RATE:.6f}")
+print(f"USE_POS_WEIGHTS: {USE_POS_WEIGHTS}\n")
+print(f"MODEL WILL BE SAVED IN: {model_filename}\n")
 
 def log(msg):
     """Helper function to write stuff both to std output and a separate file.
@@ -66,7 +72,7 @@ file = open(output_file, "w")
 
 code_counts_file = root / "data" / "codecounts.csv"
 df_codes = pd.read_csv(code_counts_file)
-pos_weights=torch.tensor(df_codes["weights"].values, device=device)
+pos_weights=torch.log1p(torch.tensor(df_codes["weights"].values, device=device))
 
 if not (Path(root) / "data" / "train.pickle").exists():
     log("Reading data from csv files and creating pickle files...")
@@ -242,9 +248,9 @@ model = BERTClass()
 _tmp = model.to(device)
 
 def loss_fn(outputs, targets):
+    if USE_POS_WEIGHTS:
+        return torch.nn.BCEWithLogitsLoss(pos_weight=pos_weights)(outputs, targets)
     return torch.nn.BCEWithLogitsLoss()(outputs, targets)
-    # Using this makes the loss jump around instead of decreasing.
-    # return torch.nn.BCEWithLogitsLoss(pos_weight=pos_weights)(outputs, targets)
 
 optimizer = torch.optim.Adam(params =  model.parameters(), lr=LEARNING_RATE)
 
@@ -313,7 +319,7 @@ def train(epoch):
                 if results['f1_macro'] > best_f1_score: 
                         best_f1_score = results['f1_macro']
                         # Save the best model so far.
-                        torch.save(model.state_dict(), "bert.pth")
+                        torch.save(model.state_dict(), model_filename)
             model.train()
             valid_end_time = time.time()
             log(time_str("Validation with dev set took", valid_end_time, valid_start_time))
@@ -334,12 +340,12 @@ for epoch in range(EPOCHS):
     if results['f1_macro'] > best_f1_score: 
         best_f1_score = results['f1_macro']
         # Save the best model so far.
-        torch.save(model.state_dict(), "bert.pth") 
+        torch.save(model.state_dict(), model_filename) 
 training_end_time = time.time()
 log(time_str("Training ended. Training took", training_end_time, training_start_time))
 
 log(f"Using model with a macro f1 score of {best_f1_score} for the dev set.")
-model.load_state_dict(torch.load("bert.pth"))
+model.load_state_dict(torch.load(model_filename))
 log("Evaluating model with the test set.")
 test_results = validation(testing_loader)
 print_results(test_results)
