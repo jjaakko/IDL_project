@@ -36,6 +36,7 @@ VALID_BATCH_SIZE = 8
 EPOCHS = 15
 LEARNING_RATE = 1e-05
 DEBUG_RUN = False
+FINAL_TRAIN = True
 USE_POS_WEIGHTS = True
 
 model_filename = f"bert__{arrow.now().format('MMM-Do-YYYY-HH_mm_ss')}.pth"
@@ -47,6 +48,7 @@ print(f"EPOCHS: {EPOCHS}")
 print(f"LEARNING_RATE: {LEARNING_RATE:.6f}")
 print(f"USE_POS_WEIGHTS: {USE_POS_WEIGHTS}\n")
 print(f"MODEL WILL BE SAVED IN: {model_filename}\n")
+print(f"FINAL TRAIN: {FINAL_TRAIN}\n")
 
 def log(msg):
     """Helper function to write stuff both to std output and a separate file.
@@ -119,6 +121,9 @@ else:
     with open(Path(root) / "data" / "test.pickle", 'rb') as handle:
         test_df = pickle.load(handle)
     print("Data loaded.")
+
+if FINAL_TRAIN:
+    train_df = train_df.append(test_df)
 
 def trim_string(x, **kwargs):
 
@@ -210,7 +215,8 @@ test_dataset = test_df[0:size_test].reset_index(drop=True)
 
 log("TRAIN Dataset: {}".format(train_dataset.shape))
 log("VALID Dataset: {}".format(valid_dataset.shape))
-log("TEST Dataset: {}".format(test_dataset.shape))
+if not FINAL_TRAIN:
+    log("TEST Dataset: {}".format(test_dataset.shape))
 
 training_set = CustomDataset(train_dataset, tokenizer, MAX_LEN)
 valid_set = CustomDataset(valid_dataset, tokenizer, MAX_LEN)
@@ -351,7 +357,10 @@ log(time_str("Training ended. Training took", training_end_time, training_start_
 
 log(f"Using model with a macro f1 score of {best_f1_score} for the dev set.")
 model.load_state_dict(torch.load(model_filename))
-log("Evaluating model with the test set.")
-test_results = validation(testing_loader)
-print_results(test_results)
+if FINAL_TRAIN:
+    print("This was the final training. We don't have test data to evaluate the model :)")
+else:
+    log("Evaluating model with the test set.")
+    test_results = validation(testing_loader)
+    print_results(test_results)
 file.close()
