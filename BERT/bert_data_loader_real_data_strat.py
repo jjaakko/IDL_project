@@ -33,7 +33,7 @@ device = 'cuda' if cuda.is_available() else 'cpu'
 MAX_LEN = 512
 TRAIN_BATCH_SIZE = 16
 VALID_BATCH_SIZE = 8
-EPOCHS = 10
+EPOCHS = 15
 LEARNING_RATE = 1e-05
 DEBUG_RUN = False
 USE_POS_WEIGHTS = True
@@ -77,11 +77,16 @@ pos_weights=torch.log1p(torch.tensor(df_codes["weights"].values, device=device))
 if not (Path(root) / "data" / "train.pickle").exists():
     log("Reading data from csv files and creating pickle files...")
     train_file = root / "data" / "train.csv"
-    valid_file = root / "data" / "valid.csv"
+    valid_file = root / "data" / "valid_bert.csv"
+    more_training = root / "data" / "rest_bert.csv"
     test_file = root / "data" / "test.csv"
 
-    valid_df = pd.read_csv(valid_file)
     train_df = pd.read_csv(train_file)
+    # We have more training data in a separate file.
+    more_train_df = pd.read_csv(more_training)
+    train_df = train_df.append(more_train_df)
+
+    valid_df = pd.read_csv(valid_file)
     test_df = pd.read_csv(test_file)
 
     # Turn string representations of lists into actual lists.
@@ -192,16 +197,16 @@ if DEBUG_RUN:
 else:
     # Use all the data (except smaller set for validation to speed up training)
     size_train = train_df.shape[0]
-    size_valid = 6000 # valid_df.shape[0]
+    size_valid = valid_df.shape[0]
     size_test = test_df.shape[0]
 
 train_dataset = train_df[0:size_train].reset_index(drop=True)
 valid_dataset = valid_df[0:size_valid].reset_index(drop=True)
 test_dataset = test_df[0:size_test].reset_index(drop=True)
 
-unused_valid = valid_df[size_valid:valid_df.shape[0]].reset_index(drop=True)
+# unused_valid = valid_df[size_valid:valid_df.shape[0]].reset_index(drop=True)
 # Extend training set with unused dev set.
-train_dataset = train_dataset.append(unused_valid).reset_index(drop=True)
+# train_dataset = train_dataset.append(unused_valid).reset_index(drop=True)
 
 log("TRAIN Dataset: {}".format(train_dataset.shape))
 log("VALID Dataset: {}".format(valid_dataset.shape))
