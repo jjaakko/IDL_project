@@ -226,8 +226,7 @@ results = predict(testing_loader)
 if Path("BERT_pred_numpy_no_zeros.npy").exists():
     Path("BERT_pred_numpy_no_zeros.npy").u
     np.save(f"BERT_pred_numpy_no_zeros.npy", final)
-final_np = add_missing(results)
-# colums = {}
+# final_np = add_missing(results)
 # final_df = pd.DataFrame(final_np, columns=columns)
 
 
