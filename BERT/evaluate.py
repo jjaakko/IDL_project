@@ -60,7 +60,7 @@ class BERTClass(torch.nn.Module):
 
 MAX_LEN = 512
 TEST_BATCH_SIZE = 16
-DEBUG_RUN = True
+DEBUG_RUN = False
 
 model_filename = f"bert__{arrow.now().format('MMM-Do-YYYY-HH_mm_ss')}.pth"
 
@@ -216,7 +216,7 @@ model.load_state_dict(torch.load(model_filename))
 print("Generating predictions.")
 results = validation(testing_loader)
 final_np = add_missing(results)
-colums = {}
-final_df = pd.DataFrame(final_p, columns=columns)
+# colums = {}
+# final_df = pd.DataFrame(final_np, columns=columns)
 
 
