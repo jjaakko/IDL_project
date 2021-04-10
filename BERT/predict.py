@@ -224,7 +224,7 @@ model.load_state_dict(torch.load(model_filename))
 print("Generating predictions.")
 results = predict(testing_loader)
 if Path("BERT_pred_numpy_no_zeros.npy").exists():
-    Path("BERT_pred_numpy_no_zeros.npy").u
+    Path("BERT_pred_numpy_no_zeros.npy").unlink()
     np.save(f"BERT_pred_numpy_no_zeros.npy", final)
 # final_np = add_missing(results)
 # final_df = pd.DataFrame(final_np, columns=columns)
