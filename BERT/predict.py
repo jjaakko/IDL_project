@@ -159,6 +159,7 @@ class CustomDataset(Dataset):
             'ids': torch.tensor(ids, dtype=torch.long),
             'mask': torch.tensor(mask, dtype=torch.long),
             'token_type_ids': torch.tensor(token_type_ids, dtype=torch.long),
+            'index': torch.tensor(index, dtype=torch.long)
         }
 
 # Creating the dataset and dataloader for the neural network
@@ -184,17 +185,22 @@ testing_loader = DataLoader(testing_set, **test_params)
 # Creating the customized model, by adding a drop out and a dense layer on top of distil bert to get the final output for the model. 
 
 
-def validation(dataset_loader):
+def predict(dataset_loader):
     model.eval()  
 
     fin_targets = np.empty((0,103), int)
     fin_outputs = np.empty((0,103), int)
 
+    indices = torch.tensor([], dtype=torch.int).to(device)
+    
     with torch.no_grad():
         for data in dataset_loader:
             ids = data['ids'].to(device, dtype = torch.long)
             mask = data['mask'].to(device, dtype = torch.long)
             token_type_ids = data['token_type_ids'].to(device, dtype = torch.long)
+            batch_indices = data['index'].to(device, dtype = torch.long)
+            indices = torch.cat((torch.flatten(indices), batch_indices))
+
             # ids.to(device)
             # mask.to(device)
             # token_type_ids.to(device)
@@ -204,7 +210,9 @@ def validation(dataset_loader):
         
         outputs = fin_outputs > 0.5
 
-        return outputs
+    indices = indices.cpu().detach().numpy()
+    predictions = outputs[indices.argsort()]
+    return predictions
 
 
 model_filename = root / "BERT" / "bert__Apr-9th-2021-00_10_39.pth" 
@@ -214,7 +222,10 @@ model.to(device)
 model.load_state_dict(torch.load(model_filename))
 
 print("Generating predictions.")
-results = validation(testing_loader)
+results = predict(testing_loader)
+if Path("BERT_pred_numpy_no_zeros.npy").exists():
+    Path("BERT_pred_numpy_no_zeros.npy").u
+    np.save(f"BERT_pred_numpy_no_zeros.npy", final)
 final_np = add_missing(results)
 # colums = {}
 # final_df = pd.DataFrame(final_np, columns=columns)
