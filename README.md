@@ -11,7 +11,7 @@ As we did not want to bloat the version control system with large files that are
 - Download our datafolder from https://www.dropbox.com/s/4gsztwl2xf7fuau/data.tar.gz?dl=0 to the root of this project
 - Untar the file in the project root. In *nix based systems you can do this by running `tar -zxvf data.tar.gz`
 
-After these steps you should the data folder structure should be as follows:
+After these steps the data folder structure should be as follows:
 
 ```
 data
@@ -32,3 +32,9 @@ To train BERT for producing predictions for the test set obtained by course admi
 - Go inside `BERT` folder
 - Run `python bert_data_loader_real_data_strat.py`
 - As a result a model file with timestamp and a `.pth` extension will be created
+
+To predict BERT for the test set obtained by course administrators complete the following steps:  
+- Go inside `BERT` folder
+- Make sure the test data exists in the folder with a name `final_test.csv`
+- Run `python predict.py`
+- The process producess csv file with the predictions
