@@ -8,11 +8,11 @@ import re
 pretrained_embeddings = api.load('word2vec-google-news-300')
 
 #Read the data
-train = pd.read_csv("../train.csv", usecols = ["tokens", "labels"],
+train = pd.read_csv("../data/train.csv", usecols = ["tokens", "labels"],
                     converters={"tokens": lambda x: x.strip("[]").replace("'","").split(", ")})
-valid = pd.read_csv("../valid.csv", usecols = ["tokens", "labels"],
+valid = pd.read_csv("../data/valid.csv", usecols = ["tokens", "labels"],
                     converters={"tokens": lambda x: x.strip("[]").replace("'","").split(", ")})
-test = pd.read_csv("../test.csv", usecols = ["tokens", "labels"],
+test = pd.read_csv("../data/test.csv", usecols = ["tokens", "labels"],
                     converters={"tokens": lambda x: x.strip("[]").replace("'","").split(", ")})
 
 #Count text tokens
