@@ -32,3 +32,7 @@ To train BERT for producing predictions for the test set obtained by course admi
 - Go inside `BERT` folder
 - Run `python bert_data_loader_real_data_strat.py`
 - As a result a model file with timestamp and a `.pth` extension will be created
+
+## Working with LSTM
+
+To train LSTM on the training set and validate against validation set, you need train.csv and valid.csv in the data-folder. You also need to run the Embeddings/Embeddings.py to create the embeddings LSTM uses. After this the LSTM/LSTM.py script should work correctly.
