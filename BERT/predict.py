@@ -228,6 +228,5 @@ else:
 if Path(file_name_to_save).exists():
     Path(file_name_to_save).unlink()
 
-np.save(file_name_to_save, results)
-# final_np = add_missing(results)
-# final_df = pd.DataFrame(final_np, columns=columns)
+# Add missing zeros for labels that were not present in training and save the final result.
+add_missing(results)
