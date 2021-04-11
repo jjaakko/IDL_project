@@ -32,5 +32,7 @@ def add_missing(predictions):
     ids = pd.read_csv("../data/final_test.csv", header=0, names=["id","a","b"])
     ids = ids["id"]
     data = pd.DataFrame(final, columns=columns)
-    result = pd.concat([ids,data], axis=1)
-    result.to_csv("predictions_KuuKiviKin.csv", sep=" ")
+    result = pd.concat([ids,data], axis=1)   
+    result.set_index("id", inplace=True)    
+    print(result.head())
+    result.to_csv("predictions_KuuKiviKin.csv", sep=" ", index_label="id")
