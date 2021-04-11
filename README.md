@@ -38,3 +38,6 @@ To predict BERT for the test set obtained by course administrators complete the 
 - Make sure the test data exists in the folder with a name `final_test.csv`
 - Run `python predict.py`
 - The process producess csv file with the predictions
+## Working with LSTM
+
+To train LSTM on the training set and validate against validation set, you need train.csv and valid.csv in the data-folder. You also need to run the Embeddings/Embeddings.py to create the embeddings LSTM uses. After this the LSTM/LSTM.py script should work correctly.
