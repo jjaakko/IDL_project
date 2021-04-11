@@ -40,4 +40,4 @@ To predict BERT for the test set obtained by course administrators complete the 
 - The process producess csv file with the predictions
 ## Working with LSTM
 
-To train LSTM on the training set and validate against validation set, you need train.csv and valid.csv in the data-folder. You also need to run the Embeddings/Embeddings.py to create the embeddings LSTM uses. After this the LSTM/LSTM.py script should work correctly.
+To train LSTM on the training set and validate against validation set, you need train.csv, valid.csv and codecounts.csv in the data folder. You also need to run the Embeddings/Embeddings.py to create the embeddings LSTM uses. After this the LSTM/LSTM.py script should work correctly.
