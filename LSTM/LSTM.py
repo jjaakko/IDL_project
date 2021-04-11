@@ -35,15 +35,15 @@ def run_model(name, batch_size, drop_unknown, hidden_size, weights):
     BATCH_SIZE = batch_size
 
     #Load train and validation sets
-    train = pd.read_csv("../train.csv", usecols = ["tokens", "labels"],
+    train = pd.read_csv("../data/train.csv", usecols = ["tokens", "labels"],
                         converters={"tokens": lambda x: x.strip("[]").replace("'","").split(", "),
                                     "labels": lambda x: list(map(int, x.strip("[]").replace("'","").split(", ")))})
-    valid = pd.read_csv("../valid.csv", usecols = ["tokens", "labels"],
+    valid = pd.read_csv("../data/valid.csv", usecols = ["tokens", "labels"],
                         converters={"tokens": lambda x: x.strip("[]").replace("'","").split(", "),
                                     "labels": lambda x: list(map(int, x.strip("[]").replace("'","").split(", ")))})
     
     #Load code weights
-    code_weights = pd.read_csv("../codecounts.csv", usecols = ["weights"])
+    code_weights = pd.read_csv("../data/codecounts.csv", usecols = ["weights"])
 
     w_default = code_weights["weights"].to_numpy()
     w_log = np.log10(w_default)
@@ -248,4 +248,5 @@ def run_model(name, batch_size, drop_unknown, hidden_size, weights):
 
 
 if __name__ == '__main__':
+    #name is used for saving results
     run_model(name = "no_weights_BS_16", batch_size = 16, drop_unknown = True, hidden_size = 200, weights = False)
