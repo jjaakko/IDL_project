@@ -81,6 +81,7 @@ if not (Path(root) / "data" / f"{file_base_name}.pickle").exists():
     test_file = root / "data" / f"{file_base_name}.csv"
 
     test_df = pd.read_csv(test_file)
+    test_df["sentences"] = test_df["sentences"].apply(lambda x: literal_eval(x))
 
     with open(Path(root) / "data" / f"{file_base_name}.pickle", 'wb') as handle:
         pickle.dump(test_df, handle, protocol=pickle.HIGHEST_PROTOCOL)
@@ -230,5 +231,3 @@ if Path(file_name_to_save).exists():
 np.save(file_name_to_save, results)
 # final_np = add_missing(results)
 # final_df = pd.DataFrame(final_np, columns=columns)
-
-
