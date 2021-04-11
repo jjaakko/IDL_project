@@ -212,7 +212,7 @@ def predict(dataset_loader):
 
 
 model_filename = root / "BERT" / "bert__Apr-9th-2021-00_10_39.pth" 
-print(f"Loading model to evaluate")
+print(f"Loading model for predicting the dataset.")
 model = BERTClass()
 model.to(device)
 model.load_state_dict(torch.load(model_filename))
