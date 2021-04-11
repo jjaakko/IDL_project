@@ -1,3 +1,6 @@
+
+""" Checks the strafied split by plotting a bar diagram of the relative frequencies of labels in each class. """
+
 from pathlib import Path
 from ast import literal_eval
 import pandas as pd
@@ -5,11 +8,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-# Read the data from .csv file
+# Read the data from .csv files
 print("\nReading files")
-df_train = pd.read_csv("train_mid.csv")
-df_valid = pd.read_csv("valid_mid.csv")
-df_test = pd.read_csv("rest_mid.csv")
+df_train = pd.read_csv("../data/train.csv")
+df_valid = pd.read_csv("../data/valid.csv")
+df_test = pd.read_csv("../data/test.csv")
 print(f"Lengths: {len(df_train)}, {len(df_valid)}, {len(df_test)}")
 
 train_codes = df_train["labels"].apply(lambda x: (literal_eval(x)))
@@ -57,7 +60,7 @@ for i in range(codes):
 
 # Generate the distribution of different codes and plot a bar diagram
 print("Plotting the diagram.")
-distribution = pd.DataFrame({"train_mid": tr_p, "valid_mid": vl_p, "train": te_p})
+distribution = pd.DataFrame({"train": tr_p, "validation": vl_p, "test": te_p})
 distribution.plot.bar()
 plt.tight_layout()
 plt.title("Distribution of codes")
